@@ -3615,6 +3615,10 @@ namespace Wchat
         /// <param name="FromUserName"></param>
         /// <returns></returns>
         public micromsg.UploadMsgImgResponse UploadMsgImgCDN(string AESKey_,int CDNMidImgSize,int CDNThumbImgSize,string Url,string to,string FromUserName) {
+
+
+          
+
             micromsg.UploadMsgImgRequest msgImgRequestCDN = new micromsg.UploadMsgImgRequest()
             {
                 BaseRequest = Util.Deserialize<micromsg.BaseRequest>(Util.Serialize(baseRequest)),

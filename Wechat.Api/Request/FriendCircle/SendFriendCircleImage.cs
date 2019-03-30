@@ -1,36 +1,23 @@
 ﻿using micromsg;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Web;
 
 
 namespace Wechat.Api.Request.FriendCircle
 {
-    public class SendFriendCircleImage
+    /// <summary>
+    /// 上传朋友圈图片
+    /// </summary>
+    public class SendFriendCircleImage : RequestBase
     {
         /// <summary>
-        /// 客户端Id
+        /// oss ObjectName
         /// </summary>
-        public string ClientId { get; set; }
-        /// <summary>
-        /// bufferurl
-        /// </summary>
-        public SnsBufferUrl BufferUrl { get; set; }
+        [Required]
+        public IList<string> ObjectNames { get; set; }
 
-        /// <summary>
-        /// ThumbUrls
-        /// </summary>
-        public List<SnsBufferUrl> ThumbUrls { get; set; }
-
-        /// <summary>
-        /// Id
-        /// </summary>
-        public ulong Id { get; set; }
-
-        /// <summary>
-        /// 类型
-        /// </summary>
-        public uint Type { get; set; }
     }
 }

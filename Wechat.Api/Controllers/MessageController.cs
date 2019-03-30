@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web;
@@ -30,14 +31,14 @@ namespace Wechat.Api.Controllers
         [Route("api/Message/SendTxtMessage")]
         public Task<HttpResponseMessage> SendTxtMessage(TxtMessage txtMessage)
         {
-            ResponseBase<IList<MMPro.MM.NewSendMsgRespone>> response = new ResponseBase<IList<MMPro.MM.NewSendMsgRespone>>();
+            ResponseBase<IList<MMPro.MM.NewSendMsgRespone.NewMsgResponeNew>> response = new ResponseBase<IList<MMPro.MM.NewSendMsgRespone.NewMsgResponeNew>>();
             try
             {
-                IList<MMPro.MM.NewSendMsgRespone> list = new List<MMPro.MM.NewSendMsgRespone>();
+                IList<MMPro.MM.NewSendMsgRespone.NewMsgResponeNew> list = new List<MMPro.MM.NewSendMsgRespone.NewMsgResponeNew>();
                 foreach (var item in txtMessage.ToWxIds)
                 {
                     var result = wechat.SendNewMsg(txtMessage.WxId, item, txtMessage.Content);
-                    list.Add(result);
+                    list.Add(result.List.FirstOrDefault());
                 }
 
                 response.Data = list;
@@ -105,6 +106,7 @@ namespace Wechat.Api.Controllers
             {
                 IList<MMPro.MM.UploadMsgImgResponse> list = new List<MMPro.MM.UploadMsgImgResponse>();
                 byte[] buffer = await FileStorageHelper.DownloadToBufferAsync(imageMessage.ObjectName);
+
                 foreach (var item in imageMessage.ToWxIds)
                 {
                     var result = wechat.SendImageMessage(imageMessage.WxId, item, buffer);
@@ -137,14 +139,16 @@ namespace Wechat.Api.Controllers
         [Route("api/Message/SendVideoMessage")]
         public async Task<HttpResponseMessage> SendVideoMessage(VideoMessage videoMessage)
         {
-            ResponseBase<IList<micromsg.UploadVideoResponse>> response = new ResponseBase<IList<micromsg.UploadVideoResponse>>();
+            ResponseBase<IList<MMPro.MM.UploadVideoResponse>> response = new ResponseBase<IList<MMPro.MM.UploadVideoResponse>>();
             try
             {
-                IList<micromsg.UploadVideoResponse> list = new List<micromsg.UploadVideoResponse>();
+                IList<MMPro.MM.UploadVideoResponse> list = new List<MMPro.MM.UploadVideoResponse>();
                 byte[] buffer = await FileStorageHelper.DownloadToBufferAsync(videoMessage.ObjectName);
+
+                byte[] imageBuffer = await FileStorageHelper.DownloadToBufferAsync(videoMessage.ImageObjectName);
                 foreach (var item in videoMessage.ToWxIds)
                 {
-                    var result = wechat.SendVideoMessage(videoMessage.WxId, item, buffer);
+                    var result = wechat.SendVideoMessage(videoMessage.WxId, item, videoMessage.PlayLength, buffer, imageBuffer);
                     list.Add(result);
                 }
                 response.Data = list;

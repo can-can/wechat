@@ -18,7 +18,7 @@ namespace Wechat.Api.Helper
             string mchId = RedisCache.CreateInstance().Get(ConstCacheKey.GetMchIdKey(uploadFileObj.WxId));
             if (string.IsNullOrEmpty(mchId))
             {
-                mchId = "00000000000";
+                throw new Exception("未初始化商户Ip");
             }
             WechatHelper wechatHelper = new WechatHelper();
             //图片

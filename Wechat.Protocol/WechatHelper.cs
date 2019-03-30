@@ -58,6 +58,12 @@ namespace Wechat.Protocol
             string aesKeyStr = (new Random()).NextBytes(16).ToString(16, 2);
             return aesKeyStr.ToByteArray(16, 2);
         }
+
+        private string GetAeskeyStr()
+        {
+            string aesKeyStr = (new Random()).NextBytes(16).ToString(16, 2);
+            return aesKeyStr;
+        }
         /// <summary>
         /// 获取设备
         /// </summary>
@@ -227,7 +233,7 @@ namespace Wechat.Protocol
                         //发送登录包
                         checkManualAuth(customerInfoCache, count);
                         //cache.RemoveKeyCache(key);
-                        cache.Add(ConstCacheKey.GetWxIdKey(customerInfoCache.WxId), customerInfoCache, DateTime.Now.AddYears(1));
+                        cache.Add(ConstCacheKey.GetWxIdKey(customerInfoCache.WxId), customerInfoCache);
 
                     }
                 }
@@ -579,7 +585,7 @@ namespace Wechat.Protocol
                                     if (addMsg.MsgType == 3)
                                     {
                                         length = xml.SelectSingleNode("/msg")?.SelectSingleNode("img")?.Attributes["hdlength"];
-                                       
+
                                     }
                                     else if (addMsg.MsgType == 34)
                                     {
@@ -2538,12 +2544,10 @@ namespace Wechat.Protocol
             string cookie = null;
             byte[] RespProtobuf = new byte[0];
 
-
-
             int Startpos = 0;//起始位置
-            int datalen = 65535;//数据分块长度
+            int datalen = 1024 * 8;//数据分块长度
             long datatotalength = sm.Length;
-            var SnsUploadResponse_ = new micromsg.SnsUploadResponse();
+            micromsg.SnsUploadResponse SnsUploadResponse_ = null; ;
 
             while (Startpos != (int)datatotalength)
             {//
@@ -2617,6 +2621,10 @@ namespace Wechat.Protocol
                 if (SnsUploadResponse_.BaseResponse.Ret == 0)
                 {
                     Startpos = Startpos + count;
+                }
+                else
+                {
+                    return null;
                 }
             }
             return SnsUploadResponse_;
@@ -3346,6 +3354,145 @@ namespace Wechat.Protocol
             var TenPayResponse_ = Util.Deserialize<TenPayResponse>(RespProtobuf);
             return TenPayResponse_;
         }
+
+
+
+        public UploadVideoResponse SendVideoMessage(string wxId, string toWxId, int playLength, byte[] buffer, byte[] imageBuffer)
+        {
+            string key = ConstCacheKey.GetWxIdKey(wxId);
+            var cache = RedisCache.CreateInstance();
+            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            if (customerInfoCache == null)
+            {
+                throw new ExpiredException("缓存失效，请重新生成二维码登录");
+            }
+            byte[] RespProtobuf = new byte[0];
+
+
+            int Startpos = 0;//起始位置       
+            int datalen = 50000;//数据分块长度    
+
+            MemoryStream imgStream = new MemoryStream(buffer);
+            long datatotalength = imgStream.Length;
+
+
+            MemoryStream imgStream1 = new MemoryStream(buffer);
+            long datatotalength1 = imgStream.Length;
+
+            string ClientImgId_ = CurrentTime_().ToString();
+
+            var UploadMsgImgResponse_ = new UploadVideoResponse();
+            int mUid = 0;
+            string cookie = null;
+            while (Startpos < (int)datatotalength)
+            {//
+                int count = 0;
+                if (datatotalength - Startpos > datalen)
+                {
+                    count = datalen;
+                }
+                else
+                {
+                    count = (int)datatotalength - Startpos;
+                }
+
+                byte[] data = new byte[count];
+                imgStream.Seek(Startpos, SeekOrigin.Begin);
+                imgStream.Read(data, 0, count);
+
+                SKBuiltinString_ data_ = new SKBuiltinString_();
+                data_.buffer = data;
+                data_.iLen = (uint)data.Length;
+
+                UploadVideoRequest uploadMsgImg_ = new UploadVideoRequest()
+                {
+                    BaseRequest = new BaseRequest()
+                    {
+                        sessionKey = customerInfoCache.BaseRequest.sessionKey,
+                        uin = customerInfoCache.BaseRequest.uin,
+                        devicelId = customerInfoCache.BaseRequest.devicelId,
+                        clientVersion = customerInfoCache.BaseRequest.clientVersion,
+                        osType = customerInfoCache.BaseRequest.osType,
+                        scene = customerInfoCache.BaseRequest.scene
+                    },
+                    clientMsgId = ClientImgId_,
+                    videoData = data_,
+                    videoTotalLen = buffer.Length,
+                    playLength = (uint)playLength,
+                    videoStartPos = (uint)Startpos,
+                    funcFlag = (uint)2,
+                    cameraType = 2,
+                    videoFrom = 0,
+                    from = wxId,
+                    to = toWxId,
+                    networkEnv = 1,
+                    reqTime = Convert.ToUInt32(CurrentTime_()),
+                    encryVer = 0,
+                    //cDNThumbImgHeight = 512,
+                    //cDNThumbImgWidth = 290,
+                    //msgForwardType = 43,
+
+                };
+                if (Startpos == 0)
+                {
+                    uploadMsgImg_.thumbStartPos = (uint)0;
+                    uploadMsgImg_.thumbTotalLen = imageBuffer.Length;
+                    uploadMsgImg_.thumbData = new SKBuiltinString_()
+                    {
+                        iLen = (uint)imageBuffer.Length,
+                        buffer = imageBuffer
+                    };
+                }
+                else
+                {
+                    uploadMsgImg_.thumbStartPos = (uint)imageBuffer.Length;
+                    uploadMsgImg_.thumbTotalLen = imageBuffer.Length;
+                    uploadMsgImg_.thumbData = new SKBuiltinString_()
+                    {
+                        iLen = 0,
+                        buffer = new byte[0]
+                    };
+                }
+
+
+                Startpos = Startpos + count;
+                var src = Util.Serialize(uploadMsgImg_);
+                int bufferlen = src.Length;
+                //组包
+                byte[] SendDate = pack(src, (int)110, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
+                //发包
+                byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/uploadvideo");
+                if (RetDate.Length > 32)
+                {
+                    var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
+                    //Console.WriteLine("CGI {0} BodyLength {1} m_bCompressed {2}", packinfo.CGI, packinfo.body.Length, packinfo.m_bCompressed);
+                    RespProtobuf = packinfo.body;
+                    if (packinfo.m_bCompressed)
+                    {
+                        RespProtobuf = Util.uncompress_aes(packinfo.body, customerInfoCache.AesKey);
+                    }
+                    else
+                    {
+                        RespProtobuf = Util.nouncompress_aes(packinfo.body, customerInfoCache.AesKey);
+                    }
+
+                }
+                else
+                {
+                    throw new ExpiredException("用户可能退出,请重新登陆");
+                }
+
+                UploadMsgImgResponse_ = Util.Deserialize<UploadVideoResponse>(RespProtobuf);
+                if (UploadMsgImgResponse_ == null || UploadMsgImgResponse_.baseResponse != null && UploadMsgImgResponse_.baseResponse.ret != RetConst.MM_OK)
+                {
+                    throw new Exception("发送失败");
+                }
+            }
+
+
+            return UploadMsgImgResponse_;
+        }
+
         /// <summary>
         /// 发送视频消息
         /// </summary>
@@ -3354,7 +3501,7 @@ namespace Wechat.Protocol
         /// <param name="buffer"></param>
         /// <param name="VideoFrom"></param>
         /// <returns></returns>
-        public micromsg.UploadVideoResponse SendVideoMessage(string wxId, string toWxId, byte[] buffer, int VideoFrom = 0)
+        public micromsg.UploadVideoResponse SendVideoMessage1(string wxId, string toWxId, byte[] buffer, int VideoFrom = 0)
         {
             string key = ConstCacheKey.GetWxIdKey(wxId);
             var cache = RedisCache.CreateInstance();
@@ -3366,9 +3513,6 @@ namespace Wechat.Protocol
             int mUid = 0;
             string cookie = null;
 
-            SKBuiltinString_ data_ = new SKBuiltinString_();
-            data_.buffer = buffer;
-            data_.iLen = (uint)buffer.Length;
             micromsg.UploadVideoRequest uploadVoice_ = new micromsg.UploadVideoRequest()
             {
                 BaseRequest = new micromsg.BaseRequest()
@@ -3390,20 +3534,21 @@ namespace Wechat.Protocol
                     iLen = (uint)buffer.Length
                 },
 
-                PlayLength = 2,
+                PlayLength = 4,
                 VideoTotalLen = (uint)buffer.Length,
-                VideoStartPos = (uint)buffer.Length,
+                VideoStartPos = 0,
                 EncryVer = 1,
                 NetworkEnv = 1,
                 FuncFlag = 2,
-                ThumbData = new micromsg.SKBuiltinBuffer_t()
-                {
-                    Buffer = new byte[0],
-                    iLen = 0
+                //ThumbData = new micromsg.SKBuiltinBuffer_t()
+                //{
+                //    Buffer = new byte[0],
+                //    iLen = 0
 
-                },
+                //},
                 CameraType = 2,
-                ThumbStartPos = (uint)buffer.Length
+                ThumbStartPos = (uint)buffer.Length,
+                ReqTime = Convert.ToUInt32(CurrentTime_())
 
             };
 
@@ -3463,7 +3608,7 @@ namespace Wechat.Protocol
             MemoryStream imgStream = new MemoryStream(buffer);
 
             int Startpos = 0;//起始位置
-            int datalen = 65535;//数据分块长度
+            int datalen = 50000;//数据分块长度
             long datatotalength = imgStream.Length;
 
             SKBuiltinString ClientImgId_ = new SKBuiltinString();
@@ -3478,7 +3623,7 @@ namespace Wechat.Protocol
             var UploadMsgImgResponse_ = new UploadMsgImgResponse();
             int mUid = 0;
             string cookie = null;
-            while (Startpos != (int)datatotalength)
+            while (Startpos < (int)datatotalength)
             {//
                 int count = 0;
                 if (datatotalength - Startpos > datalen)
@@ -3517,7 +3662,12 @@ namespace Wechat.Protocol
                     to = to_,
                     msgType = (uint)3,
                     from = from_,
-                    startPos = (uint)Startpos
+                    startPos = (uint)Startpos,
+                    messageExt = "png",
+
+                    reqTime = Convert.ToUInt32(CurrentTime_()),
+                    encryVer = 0
+
                 };
                 Startpos = Startpos + count;
                 var src = Util.Serialize(uploadMsgImg_);
@@ -3547,7 +3697,10 @@ namespace Wechat.Protocol
                 }
 
                 UploadMsgImgResponse_ = Util.Deserialize<UploadMsgImgResponse>(RespProtobuf);
-                string ret = JsonConvert.SerializeObject(UploadMsgImgResponse_);
+                if (UploadMsgImgResponse_ == null || UploadMsgImgResponse_.baseResponse != null && UploadMsgImgResponse_.baseResponse.ret != RetConst.MM_OK)
+                {
+                    throw new Exception("发送失败");
+                }
             }//
 
             return UploadMsgImgResponse_;
@@ -4051,7 +4204,6 @@ namespace Wechat.Protocol
 
             micromsg.SKBuiltinString_t ToUserName_ = new micromsg.SKBuiltinString_t();
             ToUserName_.String = toWxid;
-
             micromsg.SKBuiltinString_t FromUserName_ = new micromsg.SKBuiltinString_t();
             FromUserName_.String = wxId;
             micromsg.DownloadVideoRequest downloadVideoRequest = new micromsg.DownloadVideoRequest()

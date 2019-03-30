@@ -14,10 +14,11 @@ namespace Wechat.Util
     public class QueueObjBase
     {
         public int MsgId { get; set; }
+        public string WxId { get; set; }
     }
     public class UploadFileObj : QueueObjBase
     {
-        public string WxId { get; set; }
+
 
         public string ToWxId { get; set; }
 
@@ -93,7 +94,7 @@ namespace Wechat.Util
             _tasks.Enqueue(obj);
 
             //}
-            redis.HashSet(ConstCacheKey.GetQueueKey(typeof(T).Name), ConstCacheKey.GetQueueMsgKey(obj.MsgId), obj);
+            redis.HashSet(ConstCacheKey.GetQueueKey(typeof(T).Name), ConstCacheKey.GetQueueMsgKey(obj.WxId, obj.MsgId), obj);
             sema.Release();
         }
 
@@ -140,9 +141,9 @@ namespace Wechat.Util
             foreach (var action in actions)
             {
                 Task.Run(() =>
-                {                
+                {
                     action(obj);
-                    redis.HashDelete(ConstCacheKey.GetQueueKey(typeof(T).Name), ConstCacheKey.GetQueueMsgKey(obj.MsgId));
+                    redis.HashDelete(ConstCacheKey.GetQueueKey(typeof(T).Name), ConstCacheKey.GetQueueMsgKey(obj.WxId, obj.MsgId));
 
                 });
             }
@@ -151,11 +152,22 @@ namespace Wechat.Util
         public static string Work(T obj)
         {
             string result = null;
+            bool isFalg = true;
             foreach (var action in actions)
-            {            
-                result = action(obj);
-                redis.HashDelete(ConstCacheKey.GetQueueKey(typeof(T).Name), ConstCacheKey.GetQueueMsgKey(obj.MsgId));
-
+            {
+                try
+                {
+                    result = action(obj);
+                }
+                catch (Exception ex)
+                {
+                    isFalg = false;
+                    Logger.GetLog<QueueHelper<T>>().Error(ex);
+                }
+            }
+            if (isFalg)
+            {
+                redis.HashDelete(ConstCacheKey.GetQueueKey(typeof(T).Name), ConstCacheKey.GetQueueMsgKey(obj.WxId, obj.MsgId));
             }
             return result;
         }

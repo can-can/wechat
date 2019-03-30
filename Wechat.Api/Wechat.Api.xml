@@ -167,7 +167,7 @@
             <param name="wxId">微信Id</param>
             <returns></returns>
         </member>
-        <member name="M:Wechat.Api.Controllers.FriendCircleController.SendFriendCircleImage">
+        <member name="M:Wechat.Api.Controllers.FriendCircleController.SendFriendCircleImage(Wechat.Api.Request.FriendCircle.SendFriendCircleImage)">
             <summary>
             上传朋友圈图片
             </summary>
@@ -535,11 +535,10 @@
             <param name="sm"></param>
             <param name="objectName"></param>
         </member>
-        <member name="M:Wechat.Api.Helper.FileStorageHelper.Upload(System.String,System.Byte[],System.String)">
+        <member name="M:Wechat.Api.Helper.FileStorageHelper.Upload(System.Byte[],System.String)">
             <summary>
             上传
-            </summary>
-            <param name="fileName"></param>
+            </summary>    
             <param name="buffer"></param>
             <param name="objectName"></param>
         </member>
@@ -829,29 +828,14 @@
             总大小
             </summary>
         </member>
-        <member name="P:Wechat.Api.Request.FriendCircle.SendFriendCircleImage.ClientId">
+        <member name="T:Wechat.Api.Request.FriendCircle.SendFriendCircleImage">
             <summary>
-            客户端Id
+            上传朋友圈图片
             </summary>
         </member>
-        <member name="P:Wechat.Api.Request.FriendCircle.SendFriendCircleImage.BufferUrl">
+        <member name="P:Wechat.Api.Request.FriendCircle.SendFriendCircleImage.ObjectNames">
             <summary>
-            bufferurl
-            </summary>
-        </member>
-        <member name="P:Wechat.Api.Request.FriendCircle.SendFriendCircleImage.ThumbUrls">
-            <summary>
-            ThumbUrls
-            </summary>
-        </member>
-        <member name="P:Wechat.Api.Request.FriendCircle.SendFriendCircleImage.Id">
-            <summary>
-            Id
-            </summary>
-        </member>
-        <member name="P:Wechat.Api.Request.FriendCircle.SendFriendCircleImage.Type">
-            <summary>
-            类型
+            oss ObjectName
             </summary>
         </member>
         <member name="T:Wechat.Api.Request.FriendCircle.SetFriendCircle">
@@ -1234,7 +1218,17 @@
             发送的微信ID
             </summary>
         </member>
+        <member name="P:Wechat.Api.Request.Message.VideoMessage.PlayLength">
+            <summary>
+            播放时长 秒
+            </summary>
+        </member>
         <member name="P:Wechat.Api.Request.Message.VideoMessage.ObjectName">
+            <summary>
+            oss ObjectName
+            </summary>
+        </member>
+        <member name="P:Wechat.Api.Request.Message.VideoMessage.ImageObjectName">
             <summary>
             oss ObjectName
             </summary>

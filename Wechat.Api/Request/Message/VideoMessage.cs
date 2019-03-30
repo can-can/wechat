@@ -18,11 +18,24 @@ namespace Wechat.Api.Request.Message
         /// </summary>
         [Required]
         public IList<string> ToWxIds { get; set; }
+
+        /// <summary>
+        /// 播放时长 秒
+        /// </summary>
+        [Required]
+        public int PlayLength { get; set; }
  
         /// <summary>
         /// oss ObjectName
         /// </summary>
         [Required]
         public string ObjectName { get; set; }
+
+
+        /// <summary>
+        /// oss ObjectName
+        /// </summary>
+        [Required]
+        public string ImageObjectName { get; set; }
     }
 }

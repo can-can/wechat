@@ -35,7 +35,7 @@ namespace Wechat.Util.Cache
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public static string GetQueueKey( string type)
+        public static string GetQueueKey(string type)
         {
             return $"customer:service:queue:Wechat_{type}";
         }
@@ -43,11 +43,12 @@ namespace Wechat.Util.Cache
         /// <summary>
         /// 获取队列消息
         /// </summary>
+        ///  <param name="wxId"></param>
         /// <param name="msgId"></param>
         /// <returns></returns>
-        public static string GetQueueMsgKey(int msgId)
+        public static string GetQueueMsgKey(string wxId, int msgId)
         {
-            return $"msgId_{msgId}";
+            return $"wxId_{msgId}";
         }
 
         /// <summary>

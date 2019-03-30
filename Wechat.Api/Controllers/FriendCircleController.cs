@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web;
@@ -249,72 +250,23 @@ namespace Wechat.Api.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("api/FriendCircle/SendFriendCircleImage")]
-        public async Task<HttpResponseMessage> SendFriendCircleImage()
+        public async Task<HttpResponseMessage> SendFriendCircleImage(SendFriendCircleImage sendFriendCircleImage)
         {
-            ResponseBase<IList<SendFriendCircleImage>> response = new ResponseBase<IList<SendFriendCircleImage>>();
-            if (!Request.Content.IsMimeMultipartContent())
-            {
-                response.Success = false;
-                response.Code = "400";
-                response.Message = "请表单提交";
-                return await response.ToHttpResponseAsync();
-            }
-            if (!Request.Content.IsMimeMultipartContent())
-            {
-                response.Success = false;
-                response.Code = "400";
-                response.Message = "请表单提交";
-                return await response.ToHttpResponseAsync();
-            }
-            var fileCount = HttpContext.Current.Request.Files.Count;
-            if (fileCount == 0)
-            {
-                response.Success = false;
-                response.Code = "400";
-                response.Message = "请上传文件";
-            }
-            var wxId = HttpContext.Current.Request["WxId"];
-            if (string.IsNullOrEmpty(wxId))
-            {
-                response.Success = false;
-                response.Code = "400";
-                response.Message = "WxId不能为空";
-                return await response.ToHttpResponseAsync();
-            }
-
-            for (int i = 0; i < fileCount; i++)
-            {
-                var file = HttpContext.Current.Request.Files[i];
-                if (file.FileName.IsImage() && file.FileName.IsVideo())
-                {
-                    response.Success = false;
-                    response.Code = "400";
-                    response.Message = $"{file.FileName}不是图片文件";
-                    return await response.ToHttpResponseAsync();
-                }
-            }
-            IList<SendFriendCircleImage> list = new List<SendFriendCircleImage>();
+            ResponseBase<IList<micromsg.SnsUploadResponse>> response = new ResponseBase<IList<micromsg.SnsUploadResponse>>();
             try
             {
-                for (int i = 0; i < fileCount; i++)
+                IList<micromsg.SnsUploadResponse> list = new List<micromsg.SnsUploadResponse>();
+                foreach (var item in sendFriendCircleImage.ObjectNames)
                 {
-                    var file = HttpContext.Current.Request.Files[i];
-                    var result = wechat.SnsUpload(wxId, file.InputStream);
-                    if (result == null || result.BaseResponse.Ret != (int)MMPro.MM.RetConst.MM_OK)
+                    var buffer = await FileStorageHelper.DownloadToBufferAsync(item);
+                    var result = wechat.SnsUpload(sendFriendCircleImage.WxId, new MemoryStream(buffer));
+                    if (result == null)
                     {
                         throw new Exception("上传失败");
                     }
-                    SendFriendCircleImage sendFriendCircleImage = new SendFriendCircleImage()
-                    {
-                        ClientId = result.ClientId,
-                        BufferUrl = result.BufferUrl,
-                        ThumbUrls = result.ThumbUrls,
-                        Id = result.Id,
-                        Type = result.Type,
-                    };
-                    list.Add(sendFriendCircleImage);
-                    response.Data = list;
+                    list.Add(result);
                 }
+                response.Data = list;
                 response.Message = "上传成功";
             }
             catch (ExpiredException ex)

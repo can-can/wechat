@@ -349,25 +349,25 @@
       <publishTime>01/23/2014 13:57:34</publishTime>
     </File>
     <File Include="bin/Wechat.Api.dll">
-      <publishTime>03/29/2019 18:03:46</publishTime>
+      <publishTime>03/30/2019 17:10:33</publishTime>
     </File>
     <File Include="bin/Wechat.Api.pdb">
-      <publishTime>03/29/2019 18:03:46</publishTime>
+      <publishTime>03/30/2019 17:10:33</publishTime>
     </File>
     <File Include="bin/Wechat.Api.xml">
-      <publishTime>03/29/2019 17:40:55</publishTime>
+      <publishTime>03/30/2019 17:09:34</publishTime>
     </File>
     <File Include="bin/Wechat.Protocol.dll">
-      <publishTime>03/29/2019 17:52:34</publishTime>
+      <publishTime>03/30/2019 17:10:31</publishTime>
     </File>
     <File Include="bin/Wechat.Protocol.pdb">
-      <publishTime>03/29/2019 17:52:34</publishTime>
+      <publishTime>03/30/2019 17:10:31</publishTime>
     </File>
     <File Include="bin/Wechat.Util.dll">
-      <publishTime>03/29/2019 17:52:30</publishTime>
+      <publishTime>03/30/2019 15:10:20</publishTime>
     </File>
     <File Include="bin/Wechat.Util.pdb">
-      <publishTime>03/29/2019 17:52:30</publishTime>
+      <publishTime>03/30/2019 15:10:20</publishTime>
     </File>
     <File Include="bin/zh-Hans/System.Net.Http.Formatting.resources.dll">
       <publishTime>06/27/2014 02:04:16</publishTime>
@@ -421,10 +421,10 @@
       <publishTime>03/13/2019 13:43:31</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>03/29/2019 17:50:56</publishTime>
+      <publishTime>03/30/2019 11:01:19</publishTime>
     </File>
     <File Include="Wechat.Api.xml">
-      <publishTime>03/29/2019 17:40:55</publishTime>
+      <publishTime>03/30/2019 17:09:34</publishTime>
     </File>
   </ItemGroup>
 </Project>

@@ -49,6 +49,20 @@ namespace Wechat.Api.Test
         [TestMethod]
         public void TestLog()
         {
+            var fs = File.OpenRead(@"D:/ccccc.txt");
+            byte[] buffer = new byte[fs.Length];
+            var cc1 = fs.Read(buffer, 0, buffer.Length);
+
+            var cc2 = fs.Seek(0, SeekOrigin.Begin);
+
+            byte[] buffer1 = new byte[fs.Length];
+          var c3c=  fs.Read(buffer1, 0, 1);
+
+            var c4c = fs.Read(buffer1, 1, 1);
+
+            var cc4 = fs.Read(buffer1, 2, 1);
+
+            var ss4 = RedisCache.CreateInstance().Get("customer:service:merchant_wechat_mapping_wxid_xqyjnvihzqyn12");
             Logger.GetLog<UnitTest1>().Info("错误第哦啊我记得了咯今晚大结局啊我的");
 
             string ss = "<?xml version=\"1.0\"?>\n<msg>\n\t<videomsg aeskey=\"c72e763d4d743e785fa2d0de1b1eb0ee\" cdnthumbaeskey=\"c72e763d4d743e785fa2d0de1b1eb0ee\" cdnvideourl=\"306b02010004643062020100020432e3e1d802032f54690204b3e0313a02045c9c8a71043d617570766964656f5f323036613764666233376238316232645f313535333736323932375f3136343833353238303331393239333566653735313134300204010800040201000400\" cdnthumburl=\"306b02010004643062020100020432e3e1d802032f54690204b3e0313a02045c9c8a71043d617570766964656f5f323036613764666233376238316232645f313535333736323932375f3136343833353238303331393239333566653735313134300204010800040201000400\" length=\"392677\" playlength=\"4\" cdnthumblength=\"9924\" cdnthumbwidth=\"290\" cdnthumbheight=\"512\" fromusername=\"wxid_xqyjnvihzqyn12\" md5=\"2100082c056b1bcdf16eeb4727c4a0cc\" newmd5=\"b65d1c17670555bae4a0475377d396af\" isad=\"0\" />\n</msg>\n";

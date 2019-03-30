@@ -15,7 +15,7 @@ namespace Wechat.Api.Helper
     /// </summary>
     public class FileStorageHelper
     {
-         
+
 
         static string accessKeyId = "LTAIAAsIQLWukENf";
         static string accessKeySecret = "5R3nTfp0ZdWmH9EqFJrmJnK782N0Rd";
@@ -55,21 +55,36 @@ namespace Wechat.Api.Helper
         public static byte[] DownloadToBuffer(string objectName)
         {
             byte[] buffer = null;
-            try
-            {
-                var client = CreateOssClient();
-                // 下载文件到流。OssObject 包含了文件的各种信息，如文件所在的存储空间、文件名、元信息以及一个输入流。
-                var obj = client.GetObject(bucketName, objectName);
-                using (var requestStream = obj.Content)
-                {
-                    buffer = new byte[requestStream.Length];
-                    requestStream.Read(buffer, 0, buffer.Length);
 
-                }
-            }
-            catch (Exception ex)
+            var client = CreateOssClient();
+            // 下载文件到流。OssObject 包含了文件的各种信息，如文件所在的存储空间、文件名、元信息以及一个输入流。
+            var obj = client.GetObject(bucketName, objectName);
+            int size = 1024;
+
+            int offset = 0;
+            using (var requestStream = obj.Content)
             {
-                Console.WriteLine("Get object failed. {0}", ex.Message);
+                buffer = new byte[requestStream.Length];
+                if (buffer.Length <= size)
+                {
+                    requestStream.Read(buffer, 0, buffer.Length);
+                }
+                else
+                {
+                    while (offset < buffer.Length)
+                    {
+                        if (buffer.Length - offset <= size)
+                        {
+                            offset += requestStream.Read(buffer, offset, buffer.Length - offset);
+                        }
+                        else
+                        {
+                            offset += requestStream.Read(buffer, offset, size);
+                        }
+                    }
+                }
+
+
             }
             return buffer;
         }
@@ -81,17 +96,11 @@ namespace Wechat.Api.Helper
         public static Stream DownloadToStream(string objectName)
         {
             Stream sm = null;
-            try
-            {
-                var client = CreateOssClient();
-                // 下载文件到流。OssObject 包含了文件的各种信息，如文件所在的存储空间、文件名、元信息以及一个输入流。
-                var obj = client.GetObject(bucketName, objectName);
-                sm = obj.Content;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Get object failed. {0}", ex.Message);
-            }
+
+            var client = CreateOssClient();
+            // 下载文件到流。OssObject 包含了文件的各种信息，如文件所在的存储空间、文件名、元信息以及一个输入流。
+            var obj = client.GetObject(bucketName, objectName);
+            sm = obj.Content;
             return sm;
         }
         /// <summary>
@@ -102,21 +111,36 @@ namespace Wechat.Api.Helper
         public static async Task<byte[]> DownloadToBufferAsync(string objectName)
         {
             byte[] buffer = null;
-            try
-            {
-                var client = CreateOssClient();
-                // 下载文件到流。OssObject 包含了文件的各种信息，如文件所在的存储空间、文件名、元信息以及一个输入流。
-                var obj = client.GetObject(bucketName, objectName);
-                using (var requestStream = obj.Content)
-                {
-                    buffer = new byte[requestStream.Length];
-                    await requestStream.ReadAsync(buffer, 0, buffer.Length);
 
-                }
-            }
-            catch (Exception ex)
+            var client = CreateOssClient();
+            // 下载文件到流。OssObject 包含了文件的各种信息，如文件所在的存储空间、文件名、元信息以及一个输入流。
+            var obj = client.GetObject(bucketName, objectName);
+            int size = 1024;
+
+            int offset = 0;
+            using (var requestStream = obj.Content)
             {
-                Console.WriteLine("Get object failed. {0}", ex.Message);
+                buffer = new byte[requestStream.Length];
+                if (buffer.Length <= size)
+                {
+                    await requestStream.ReadAsync(buffer, 0, buffer.Length);
+                }
+                else
+                {
+                    while (offset < buffer.Length)
+                    {
+                        if (buffer.Length - offset <= size)
+                        {
+                            offset += await requestStream.ReadAsync(buffer, offset, buffer.Length - offset);
+                        }
+                        else
+                        {
+                            offset += await requestStream.ReadAsync(buffer, offset, size);
+                        }
+                    }
+                }
+
+
             }
             return buffer;
         }
@@ -133,7 +157,7 @@ namespace Wechat.Api.Helper
             {
                 // 上传文件。
                 var client = CreateOssClient();
-            
+
                 var result = client.PutObject(bucketName, objectName, sm);
             }
             catch (Exception ex)
@@ -148,7 +172,7 @@ namespace Wechat.Api.Helper
         /// </summary>    
         /// <param name="buffer"></param>
         /// <param name="objectName"></param>
-        public static void Upload( byte[] buffer, string objectName)
+        public static void Upload(byte[] buffer, string objectName)
         {
             try
             {
