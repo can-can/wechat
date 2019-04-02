@@ -1,7 +1,9 @@
-﻿using System;
+﻿using org.apache.rocketmq.common.message;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Wechat.Api.Abstracts;
@@ -10,7 +12,12 @@ using Wechat.Api.Helper;
 using Wechat.Api.Request.Common;
 using Wechat.Protocol;
 using Wechat.Util;
+using Wechat.Util.Cache;
 using Wechat.Util.Exceptions;
+using Wechat.Util.Extensions;
+using Wechat.Util.FileStore;
+using Wechat.Util.Mq;
+
 namespace Wechat.Api.Controllers
 {
     /// <summary>
@@ -39,7 +46,20 @@ namespace Wechat.Api.Controllers
                     LongDataLength = bigImage.LongDataLength,
 
                 };
-                string objName = QueueHelper<UploadFileObj>.Work(uploadFileObj);
+                string mchId = RedisCache.CreateInstance().Get(ConstCacheKey.GetMchIdKey(uploadFileObj.WxId));
+                if (string.IsNullOrEmpty(mchId))
+                {
+                    throw new Exception("未初始化商户Ip");
+                }
+                string objName = $"{FileStorageHelper.GetObjectName(mchId)}{uploadFileObj.MsgId}.png";
+
+                var producer = RocketMqHelper.CreateDefaultMQProducer(MqConst.UploadOssProducerGroup);
+                var buffer = Encoding.UTF8.GetBytes(uploadFileObj.ToJson());
+                Message message = new Message(MqConst.UploadOssTopic, buffer);
+                producer.SendMessage(message);
+
+
+
                 response.Data = objName;
 
             }
@@ -121,7 +141,17 @@ namespace Wechat.Api.Controllers
                     LongDataLength = bigVideo.LongDataLength,
 
                 };
-                string objName = QueueHelper<UploadFileObj>.Work(uploadFileObj);
+                string mchId = RedisCache.CreateInstance().Get(ConstCacheKey.GetMchIdKey(uploadFileObj.WxId));
+                if (string.IsNullOrEmpty(mchId))
+                {
+                    throw new Exception("未初始化商户Ip");
+                }
+                string objName = $"{FileStorageHelper.GetObjectName(mchId)}{uploadFileObj.MsgId}.mp4";
+
+                var producer = RocketMqHelper.CreateDefaultMQProducer(MqConst.UploadOssProducerGroup);
+                var buffer = Encoding.UTF8.GetBytes(uploadFileObj.ToJson());
+                Message message = new Message(MqConst.UploadOssTopic, buffer);
+                producer.SendMessage(message);
                 response.Data = objName;
 
             }

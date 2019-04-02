@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web.Script.Serialization;
-
+using Wechat.Util.Ip;
 
 namespace Wechat.Protocol
 {
@@ -232,7 +232,7 @@ namespace Wechat.Protocol
             }
             return bbt;
         }
-        public static byte[] HttpPost(byte[] data, string Url_GCI)
+        public static byte[] HttpPost(byte[] data, string Url_GCI, ProxyIpCacheResp proxy)
         {
             //Console.WriteLine(shortUrl + Url_GCI);
             HttpHelper http = new HttpHelper();
@@ -247,7 +247,10 @@ namespace Wechat.Protocol
                 ContentType = "application/octet-stream",
                 //se = "SEC_SF_edcd630591726845634a339fa1e14168; Domain =.weixin110.qq.com; Path =/; Secure; HttpOnly",
                 ResultType = ResultType.Byte,
-                ProxyIp = "",
+                ProxyIp = proxy?.ProxyIp,
+                ProxyUserName = proxy?.Username,
+                ProxyPwd = proxy?.Password
+
             };
 
             HttpResult ret = http.GetHtml(item);
@@ -482,7 +485,7 @@ namespace Wechat.Protocol
             return strbul.ToString();
         }
 
-  
+
     }
 
 

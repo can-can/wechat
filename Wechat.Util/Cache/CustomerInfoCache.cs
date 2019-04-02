@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
+using Wechat.Util.Ip;
 
 namespace Wechat.Util.Cache
 {
@@ -132,5 +133,15 @@ namespace Wechat.Util.Cache
             public int scene;
         }
 
+        /// <summary>
+        /// 代理Ip
+        /// </summary>
+        public ProxyIpCacheResp Proxy { get; set; }
+
+  
+
+
     }
+
+
 }

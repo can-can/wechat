@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28010.2003
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wechat", "Wechat\Wechat.csproj", "{C4B71771-883F-46B2-860B-63F6B1C70831}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wechat.Api", "Wechat.Api\Wechat.Api.csproj", "{9A186DF5-2959-4EA0-A9E3-D32C11ECEC92}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wechat.Protocol", "Wechat.Protocol\Wechat.Protocol.csproj", "{17338923-85DD-49B5-A40D-2741BB52FDAA}"
@@ -13,16 +11,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wechat.Util", "Wechat.Util\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wechat.Api.Test", "Wechat.Api.Test\Wechat.Api.Test.csproj", "{854CCFC4-5FBA-4157-8E0D-377719E0AFB8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wechat.Task.App", "Wechat.Task.App\Wechat.Task.App.csproj", "{ECE017B8-6952-48D7-BD60-6925644FCB75}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C4B71771-883F-46B2-860B-63F6B1C70831}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C4B71771-883F-46B2-860B-63F6B1C70831}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C4B71771-883F-46B2-860B-63F6B1C70831}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C4B71771-883F-46B2-860B-63F6B1C70831}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9A186DF5-2959-4EA0-A9E3-D32C11ECEC92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9A186DF5-2959-4EA0-A9E3-D32C11ECEC92}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9A186DF5-2959-4EA0-A9E3-D32C11ECEC92}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -39,6 +35,10 @@ Global
 		{854CCFC4-5FBA-4157-8E0D-377719E0AFB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{854CCFC4-5FBA-4157-8E0D-377719E0AFB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{854CCFC4-5FBA-4157-8E0D-377719E0AFB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ECE017B8-6952-48D7-BD60-6925644FCB75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ECE017B8-6952-48D7-BD60-6925644FCB75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ECE017B8-6952-48D7-BD60-6925644FCB75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ECE017B8-6952-48D7-BD60-6925644FCB75}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

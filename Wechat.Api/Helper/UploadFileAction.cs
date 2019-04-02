@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
 using Wechat.Protocol;
 using Wechat.Util;
 using Wechat.Util.Cache;
+using Wechat.Util.FileStore;
 
 namespace Wechat.Api.Helper
 {

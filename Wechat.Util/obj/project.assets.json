@@ -2,6 +2,15 @@
   "version": 3,
   "targets": {
     ".NETFramework,Version=v4.6.1": {
+      "Aliyun.OSS.SDK/2.9.0": {
+        "type": "package",
+        "compile": {
+          "lib/Aliyun.OSS.dll": {}
+        },
+        "runtime": {
+          "lib/Aliyun.OSS.dll": {}
+        }
+      },
       "log4net/2.0.8": {
         "type": "package",
         "compile": {
@@ -31,6 +40,20 @@
         },
         "runtime": {
           "lib/net461/Pipelines.Sockets.Unofficial.dll": {}
+        }
+      },
+      "Quartz/3.0.7": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "System.Configuration",
+          "System.Runtime.Remoting"
+        ],
+        "compile": {
+          "lib/net452/Quartz.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Quartz.dll": {}
         }
       },
       "StackExchange.Redis/2.0.519": {
@@ -157,6 +180,15 @@
       }
     },
     ".NETFramework,Version=v4.6.1/win": {
+      "Aliyun.OSS.SDK/2.9.0": {
+        "type": "package",
+        "compile": {
+          "lib/Aliyun.OSS.dll": {}
+        },
+        "runtime": {
+          "lib/Aliyun.OSS.dll": {}
+        }
+      },
       "log4net/2.0.8": {
         "type": "package",
         "compile": {
@@ -186,6 +218,20 @@
         },
         "runtime": {
           "lib/net461/Pipelines.Sockets.Unofficial.dll": {}
+        }
+      },
+      "Quartz/3.0.7": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "System.Configuration",
+          "System.Runtime.Remoting"
+        ],
+        "compile": {
+          "lib/net452/Quartz.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Quartz.dll": {}
         }
       },
       "StackExchange.Redis/2.0.519": {
@@ -312,6 +358,15 @@
       }
     },
     ".NETFramework,Version=v4.6.1/win-x64": {
+      "Aliyun.OSS.SDK/2.9.0": {
+        "type": "package",
+        "compile": {
+          "lib/Aliyun.OSS.dll": {}
+        },
+        "runtime": {
+          "lib/Aliyun.OSS.dll": {}
+        }
+      },
       "log4net/2.0.8": {
         "type": "package",
         "compile": {
@@ -341,6 +396,20 @@
         },
         "runtime": {
           "lib/net461/Pipelines.Sockets.Unofficial.dll": {}
+        }
+      },
+      "Quartz/3.0.7": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "System.Configuration",
+          "System.Runtime.Remoting"
+        ],
+        "compile": {
+          "lib/net452/Quartz.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Quartz.dll": {}
         }
       },
       "StackExchange.Redis/2.0.519": {
@@ -467,6 +536,15 @@
       }
     },
     ".NETFramework,Version=v4.6.1/win-x86": {
+      "Aliyun.OSS.SDK/2.9.0": {
+        "type": "package",
+        "compile": {
+          "lib/Aliyun.OSS.dll": {}
+        },
+        "runtime": {
+          "lib/Aliyun.OSS.dll": {}
+        }
+      },
       "log4net/2.0.8": {
         "type": "package",
         "compile": {
@@ -496,6 +574,20 @@
         },
         "runtime": {
           "lib/net461/Pipelines.Sockets.Unofficial.dll": {}
+        }
+      },
+      "Quartz/3.0.7": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "System.Configuration",
+          "System.Runtime.Remoting"
+        ],
+        "compile": {
+          "lib/net452/Quartz.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Quartz.dll": {}
         }
       },
       "StackExchange.Redis/2.0.519": {
@@ -623,6 +715,19 @@
     }
   },
   "libraries": {
+    "Aliyun.OSS.SDK/2.9.0": {
+      "sha512": "5PW7Eo6DPeh5U7YzTyho4gwi72Y/oNf+OJ2RoD2blCN2akhziGYzgx5Z0X5AID3V19s1Hodm2arAi5MaHxkejA==",
+      "type": "package",
+      "path": "aliyun.oss.sdk/2.9.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "aliyun.oss.sdk.2.9.0.nupkg.sha512",
+        "aliyun.oss.sdk.nuspec",
+        "lib/Aliyun.OSS.dll",
+        "lib/Aliyun.OSS.pdb"
+      ]
+    },
     "log4net/2.0.8": {
       "sha512": "N41MQGHZImiCfn0cUuSBjZxrcNfIQCuCgQP0rpgB3J/NWponEh3lc1LxJEuIsPAR9Oc1jVvfkNNFCY1C5hf9LA==",
       "type": "package",
@@ -703,6 +808,23 @@
         "lib/netstandard2.0/Pipelines.Sockets.Unofficial.xml",
         "pipelines.sockets.unofficial.1.0.7.nupkg.sha512",
         "pipelines.sockets.unofficial.nuspec"
+      ]
+    },
+    "Quartz/3.0.7": {
+      "sha512": "3vCJ/eJQzEne1ZocNftmPBjuA0vFHs8rOG3bQcSsB9fbQuZpmkrmOH+0Iq7mlibSbR9f1VV4TUMnkkbPUd7Kqw==",
+      "type": "package",
+      "path": "quartz/3.0.7",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net452/Quartz.dll",
+        "lib/net452/Quartz.pdb",
+        "lib/net452/Quartz.xml",
+        "lib/netstandard2.0/Quartz.dll",
+        "lib/netstandard2.0/Quartz.pdb",
+        "lib/netstandard2.0/Quartz.xml",
+        "quartz.3.0.7.nupkg.sha512",
+        "quartz.nuspec"
       ]
     },
     "StackExchange.Redis/2.0.519": {
@@ -1056,7 +1178,9 @@
   },
   "projectFileDependencyGroups": {
     ".NETFramework,Version=v4.6.1": [
+      "Aliyun.OSS.SDK >= 2.9.0",
       "Newtonsoft.Json >= 12.0.1",
+      "Quartz >= 3.0.7",
       "StackExchange.Redis >= 2.0.519",
       "ZXing.Net >= 0.16.4",
       "log4net >= 2.0.8"
@@ -1100,9 +1224,17 @@
     "frameworks": {
       "net461": {
         "dependencies": {
+          "Aliyun.OSS.SDK": {
+            "target": "Package",
+            "version": "[2.9.0, )"
+          },
           "Newtonsoft.Json": {
             "target": "Package",
             "version": "[12.0.1, )"
+          },
+          "Quartz": {
+            "target": "Package",
+            "version": "[3.0.7, )"
           },
           "StackExchange.Redis": {
             "target": "Package",

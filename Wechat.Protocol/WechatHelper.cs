@@ -16,6 +16,10 @@ using System.Threading.Tasks;
 using MMPro;
 using Wechat.Util;
 using System.Xml;
+using Wechat.Util.Ip;
+using Wechat.Util.Log;
+using Wechat.Util.Mq;
+using org.apache.rocketmq.common.message;
 
 namespace Wechat.Protocol
 {
@@ -78,11 +82,15 @@ namespace Wechat.Protocol
         /// 获取登录二维码
         /// </summary>
         /// <returns></returns>
-        public GetLoginQRCodeResponse GetLoginQRcode()
+        public GetLoginQRCodeResponse GetLoginQRcode(int count = 0)
         {
-
             var aesKey = GetAeskey();
             var deviceId = GetDeviceId();
+            ProxyIpCacheResp proxy = null;
+            if (IpHelper.IsProxy)
+            {
+                proxy = IpHelper.GetProxy();
+            }
             int mUid = 0;
             string cookie = null;
             GetLoginQRCodeResponse getLoginQRCodeResponse = null;
@@ -102,7 +110,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_GETLOGINQRCODE, bufferlen, aesKey, null, 0, null, 7);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_GETLOGINQRCODE);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_GETLOGINQRCODE, proxy);
             // 解包头
             if (RetDate == null) { return new GetLoginQRCodeResponse(); }
             if (RetDate.Length > 32)
@@ -129,6 +137,7 @@ namespace Wechat.Protocol
                         AesKey = getLoginQRCodeResponse.AESKey.key,
                         DeviceId = deviceId,
                         Cookie = cookie,
+                        Proxy = proxy,
                     };
                     RedisCache.CreateInstance().Add(key, customerInfoCache, 600);
 
@@ -136,7 +145,15 @@ namespace Wechat.Protocol
             }
             else
             {
-                throw new ExpiredException("用户可能退出,请重新登陆");
+                Logger.GetLog<WechatHelper>().Error($"GetLoginQRcode代理请求出错，移除代理【{proxy.ToJson()}】");
+                var b = IpHelper.ProxyIps.Remove(proxy);
+                if (count > 5)
+                {
+                    Logger.GetLog<WechatHelper>().Error($"代理请求超过次数");
+                    throw new ExpiredException("系统出现异常，请稍后再试");
+                }
+                getLoginQRCodeResponse = GetLoginQRcode(count++);
+                //throw new ExpiredException("用户可能退出,请重新登陆");
             }
             return getLoginQRCodeResponse;
         }
@@ -181,7 +198,7 @@ namespace Wechat.Protocol
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_CHECKLOGINQRCODE, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf,
                 customerInfoCache.MUid, customerInfoCache.Cookie, 7);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_CHECKLOGINQRCODE);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_CHECKLOGINQRCODE, customerInfoCache.Proxy);
             if (RetDate == null) { return null; }
             if (RetDate.Length > 32)
             {
@@ -199,6 +216,8 @@ namespace Wechat.Protocol
             }
             else
             {
+                var b = IpHelper.ProxyIps.Remove(customerInfoCache.Proxy);
+                Logger.GetLog<WechatHelper>().Error($"CheckLoginQRCode代理请求出错，移除代理【{customerInfoCache.Proxy.ToJson()}】");
                 throw new Exception("数据包可能有问题,请重新生成二维码登录");
             }
 
@@ -231,9 +250,8 @@ namespace Wechat.Protocol
                     if (r.state == 2)
                     {
                         //发送登录包
-                        checkManualAuth(customerInfoCache, count);
-                        //cache.RemoveKeyCache(key);
-                        cache.Add(ConstCacheKey.GetWxIdKey(customerInfoCache.WxId), customerInfoCache);
+                        checkManualAuth(customerInfoCache, count);                 
+                        cache.HashSet(ConstCacheKey.GetWxIdKey(), customerInfoCache.WxId, customerInfoCache);
 
                     }
                 }
@@ -252,9 +270,9 @@ namespace Wechat.Protocol
         public InitResponse Init(string wxId)
         {
             InitResponse list = new InitResponse();
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -303,7 +321,10 @@ namespace Wechat.Protocol
                                     xml.LoadXml(addMsg.Content.String);
                                     var length = xml.SelectSingleNode("/msg")?.SelectSingleNode("videomsg")?.Attributes["length"];
                                     uploadFileObj.LongDataLength = length == null ? 0 : Convert.ToInt64(length.Value);
-                                    QueueHelper<UploadFileObj>.EnqueueTask(uploadFileObj);
+                                    var producer = RocketMqHelper.CreateDefaultMQProducer(MqConst.UploadOssProducerGroup);
+                                    var buffer = Encoding.UTF8.GetBytes(uploadFileObj.ToJson());
+                                    Message message = new Message(MqConst.UploadOssTopic, buffer);
+                                    producer.SendMessage(message);
                                 }
                                 catch { }
                             }
@@ -509,7 +530,7 @@ namespace Wechat.Protocol
                 }
             }
             customerInfoCache.Sync = newInit.CurrentSynckey.ToByteArray();
-            cache.Add(key, customerInfoCache);
+            cache.HashSet(ConstCacheKey.GetWxIdKey(), wxId, customerInfoCache);
             return list;
 
         }
@@ -522,9 +543,9 @@ namespace Wechat.Protocol
         public InitResponse SyncInit(string wxId)
         {
             InitResponse list = new InitResponse();
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -532,7 +553,7 @@ namespace Wechat.Protocol
             if (customerInfoCache.Sync == null)
             {
                 Init(wxId);
-                customerInfoCache = cache.Get<CustomerInfoCache>(key);
+                customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
                 if (customerInfoCache == null)
                 {
                     throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -597,7 +618,10 @@ namespace Wechat.Protocol
                                     }
 
                                     uploadFileObj.LongDataLength = length == null ? 0 : Convert.ToInt64(length.Value);
-                                    QueueHelper<UploadFileObj>.EnqueueTask(uploadFileObj);
+                                    var producer = RocketMqHelper.CreateDefaultMQProducer(MqConst.UploadOssProducerGroup);
+                                    var buffer = Encoding.UTF8.GetBytes(uploadFileObj.ToJson());
+                                    Message message = new Message(MqConst.UploadOssTopic, buffer);
+                                    producer.SendMessage(message);
                                 }
                                 catch { }
                             }
@@ -804,7 +828,7 @@ namespace Wechat.Protocol
 
                 customerInfoCache.Sync = NewSync.sync_key;
             }
-            cache.Add(key, customerInfoCache);
+            cache.HashSet(ConstCacheKey.GetWxIdKey(), wxId, customerInfoCache);
             return list;
         }
         /// <summary>
@@ -873,9 +897,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.NewSetPasswdResponse NewSetPasswd(string wxId, string NewPasswd, string ticket)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -916,7 +940,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 383, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/newsetpasswd");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/newsetpasswd", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -941,7 +965,7 @@ namespace Wechat.Protocol
             if (SetPwdResponse == null || SetPwdResponse.BaseResponse.Ret != (int)MMPro.MM.RetConst.MM_OK)
             {
                 customerInfoCache.AuthKey = SetPwdResponse.AutoAuthKey.Buffer;
-                cache.Add(key, customerInfoCache);
+                cache.HashSet(ConstCacheKey.GetWxIdKey(), wxId, customerInfoCache);
             }
             return SetPwdResponse;
         }
@@ -959,9 +983,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public CreateChatRoomResponese CreateChatRoom(string wxId, MemberReq[] list, string topic = "")
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -992,7 +1016,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_CREATECHATROOM, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_CREATECHATROOM);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_CREATECHATROOM, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1025,9 +1049,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public AddChatRoomMemberResponse AddChatRoomMember(string wxId, string chatRoomName, MemberReq[] list)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1058,7 +1082,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_ADDCHATROOMMEMBER, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_ADDCHATROOMMEMBER);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_ADDCHATROOMMEMBER, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1092,9 +1116,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public DelChatRoomMemberResponse DelChatRoomMember(string wxId, string chatRoomName, DelMemberReq[] list)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1123,7 +1147,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_DELCHATROOMMEMBER, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_DELCHATROOMMEMBER);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_DELCHATROOMMEMBER, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1157,9 +1181,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public GetChatroomMemberDetailResponse GetChatroomMemberDetail(string wxId, string chatroomUserName)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1186,7 +1210,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_GETCHATROOMMEMBERDETAIL, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_GETCHATROOMMEMBERDETAIL);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_GETCHATROOMMEMBERDETAIL, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1219,9 +1243,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.QuitChatRoomResp QuitGroup(string wxId, string chatroomUserName)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1247,7 +1271,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 16, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/quitchatroom");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/quitchatroom", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1279,9 +1303,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.SetChatRoomAnnouncementResponse setChatRoomAnnouncement(string wxId, string ChatRoomName, string Announcement)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1311,7 +1335,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_SETCHATROOMANNOUNCEMENT, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/setchatroomannouncement");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/setchatroomannouncement", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1343,9 +1367,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.LogOutResponse logOut(string wxId)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1375,7 +1399,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 282, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/logout");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/logout", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1407,9 +1431,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public InitContactResponse InitContact(string wxId, int currentWxcontactSeq = 0)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1428,7 +1452,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_INITCONTACT, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_INITCONTACT);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_INITCONTACT, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1463,9 +1487,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.GetContactResponse GetContactDetail(string wxId, string searchWxId, string ChatRoom = "")
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1507,7 +1531,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_GETCONTACT, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_GETCONTACT);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_GETCONTACT, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1543,9 +1567,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public LbsResponse LbsLBSFind(string wxId, float latitude, float logitude, int type = 1)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1578,7 +1602,7 @@ namespace Wechat.Protocol
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_LBSFIND, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
 
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_LBSFIND);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_LBSFIND, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
 
@@ -1614,9 +1638,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public SearchContactResponse SearchContact(string wxId, string userName)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1649,7 +1673,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_SEARCHCONTACT, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_SEARCHCONTACT);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_SEARCHCONTACT, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1684,9 +1708,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.GetA8KeyResp GetA8Key(string wxId, string url, int opcode = 2)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1725,7 +1749,7 @@ namespace Wechat.Protocol
             string cookie = null;
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_GETA8KEY, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/geta8key");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/geta8key", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1756,9 +1780,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.AddContactLabelResponse AddContactLabel(string wxId, string LabelName)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1795,7 +1819,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 635, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/addcontactlabel");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/addcontactlabel", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1829,9 +1853,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.ModifyContactLabelListResponse ModifyContactLabelList(string wxId, micromsg.UserLabelInfo[] UserLabelInfo)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1864,7 +1888,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 638, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/modifycontactlabellist");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/modifycontactlabellist", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1899,9 +1923,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.DelContactLabelResponse DelContactLabel(string wxId, string LabelIDList_)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1930,7 +1954,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 636, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/delcontactlabel");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/delcontactlabel", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -1965,9 +1989,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public GetContactLabelListResponse GetContactLabelList(string wxId)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -1993,7 +2017,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_GETCONTACTLABELLIST, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_GETCONTACTLABELLIST);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_GETCONTACTLABELLIST, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2027,9 +2051,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.BindEmailResponse BindEmail(string wxId, string Email, int opcode = 1)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2060,7 +2084,7 @@ namespace Wechat.Protocol
             int mUid = 0;
             string cookie = null;
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/bindemail");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/bindemail", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2092,9 +2116,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.ShakeGetResponse ShakeReport(string wxId, float Latitude, float Longitude)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2131,7 +2155,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 161, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/shakereport");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/shakereport", customerInfoCache.Proxy);
 
 
 
@@ -2175,9 +2199,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public SnsUserPageResponse SnsUserPage(string fristPageMd5, string wxId, string toWxId, int maxid = 0)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2211,7 +2235,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_MMSNSUSERPAGE, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSUSERPAGE);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSUSERPAGE, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2246,9 +2270,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public SnsTimeLineResponse SnsTimeLine(string wxId, string fristPageMd5 = "", int maxid = 0)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2282,7 +2306,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_MMSNSTIMELINE, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSTIMELINE);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSTIMELINE, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2316,9 +2340,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public SnsObjectOpResponse GetSnsObjectOp(ulong id, string wxId, SnsObjectOpType type)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2353,7 +2377,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_SNSOBJECTOP, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSOBJECTOP);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSOBJECTOP, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2385,9 +2409,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public SnsPostResponse SnsPost(string wxId, string content, IList<string> BlackList, IList<string> WithUserList)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2443,7 +2467,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_MMSNSPORT, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSPORT);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSPORT, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2475,9 +2499,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public SnsSyncResponse SnsSync(string wxId)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2499,7 +2523,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(nsrData, (int)CGI_TYPE.CGI_TYPE_MMSNSSYNC, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSSYNC);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSSYNC, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2533,9 +2557,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.SnsUploadResponse SnsUpload(string wxId, Stream sm)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2596,7 +2620,7 @@ namespace Wechat.Protocol
                 //组包
                 byte[] SendDate = pack(src, 207, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
                 //发包
-                byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/snsupload");
+                byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/snsupload", customerInfoCache.Proxy);
                 if (RetDate.Length > 32)
                 {
                     var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2641,9 +2665,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.SnsCommentResponse SnsComment(ulong id, string wxId, string toWxId, int relpyCommentId, string content, SnsObjectType type)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2693,7 +2717,7 @@ namespace Wechat.Protocol
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_NEWSENDMSG, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
 
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSCOMMENT);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_MMSNSCOMMENT, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2728,9 +2752,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public NewSendMsgRespone SendNewMsg(string wxId, string toWxId, string content, int type = 1)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2769,7 +2793,7 @@ namespace Wechat.Protocol
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_NEWSENDMSG, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
 
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_NEWSENDMSG);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_NEWSENDMSG, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2805,9 +2829,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public UploadVoiceResponse SendVoiceMessage(string wxId, string toWxId, byte[] buffer, VoiceFormat voiceFormat = VoiceFormat.MM_VOICE_FORMAT_AMR, int voiceLen = 100)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2846,7 +2870,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 127, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/uploadvoice");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/uploadvoice", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -2882,9 +2906,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.UploadMContactResponse UploadMContact(string wxId, string Mobile_, micromsg.Mobile[] UPMobile)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2918,7 +2942,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_UPLOADMCONTACT, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_UPLOADMCONTACT);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_UPLOADMCONTACT, customerInfoCache.Proxy);
             byte[] RespProtobuf = new byte[0];
 
             if (RetDate.Length > 32)
@@ -2947,9 +2971,9 @@ namespace Wechat.Protocol
         }
         public NewSendMsgRespone SendVoiceMessage1(string wxId, string toWxId, string content, byte[] buffer, VoiceFormat voiceFormat = VoiceFormat.MM_VOICE_FORMAT_AMR, int voiceLen = 100, int type = 34)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -2988,7 +3012,7 @@ namespace Wechat.Protocol
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_NEWSENDMSG, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
 
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_NEWSENDMSG);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_NEWSENDMSG, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -3019,9 +3043,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.FavSyncResponse FavSync(string wxId, byte[] keybuf = null)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3048,7 +3072,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_FAVSYNC, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_FAVSYNC);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_FAVSYNC, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -3091,9 +3115,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.BatchGetFavItemResponse GetFavItem(string wxId, int FavId)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3124,7 +3148,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_BATCHGETFAVITEM, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_BATCHGETFAVITEM);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_BATCHGETFAVITEM, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -3157,9 +3181,9 @@ namespace Wechat.Protocol
         public micromsg.BatchDelFavItemResponse DelFavItem(string wxId, uint[] FavId)
         {
 
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3194,7 +3218,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 484, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/batchdelfavitem");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/batchdelfavitem", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -3227,9 +3251,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.AddFavItemResponse addFavItem(string wxId, string object_, string SourceId_ = "")
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3262,7 +3286,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 401, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/addfavitem");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/addfavitem", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -3290,9 +3314,9 @@ namespace Wechat.Protocol
 
         public TenPayResponse TenPay(string wxId, enMMTenPayCgiCmd cgiCmd, string reqText = "", string reqTextWx = "")
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3330,7 +3354,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_TENPAY, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_TENPAY);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_TENPAY, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -3359,9 +3383,9 @@ namespace Wechat.Protocol
 
         public UploadVideoResponse SendVideoMessage(string wxId, string toWxId, int playLength, byte[] buffer, byte[] imageBuffer)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3461,7 +3485,7 @@ namespace Wechat.Protocol
                 //组包
                 byte[] SendDate = pack(src, (int)110, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
                 //发包
-                byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/uploadvideo");
+                byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/uploadvideo", customerInfoCache.Proxy);
                 if (RetDate.Length > 32)
                 {
                     var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -3503,9 +3527,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.UploadVideoResponse SendVideoMessage1(string wxId, string toWxId, byte[] buffer, int VideoFrom = 0)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3557,7 +3581,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 149, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/uploadvideo");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/uploadvideo", customerInfoCache.Proxy);
             byte[] RespProtobuf = new byte[0];
 
             if (RetDate.Length > 32)
@@ -3597,9 +3621,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public UploadMsgImgResponse SendImageMessage(string wxId, string toWxId, byte[] buffer)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3675,7 +3699,7 @@ namespace Wechat.Protocol
                 //组包
                 byte[] SendDate = pack(src, (int)110, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
                 //发包
-                byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/uploadmsgimg");
+                byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/uploadmsgimg", customerInfoCache.Proxy);
                 if (RetDate.Length > 32)
                 {
                     var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -3712,9 +3736,9 @@ namespace Wechat.Protocol
 
         public micromsg.SendAppMsgResponse SendCardMsg(string Content, string toWxid, string wxId)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3748,7 +3772,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 222, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/sendcard");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/sendcard", customerInfoCache.Proxy);
 
             if (RetDate.Length > 32)
             {
@@ -3785,9 +3809,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public micromsg.SendAppMsgResponse SendAppMsg(string Content, string toWxid, string wxId, int type = 8)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3821,7 +3845,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 222, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/sendappmsg");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/sendappmsg", customerInfoCache.Proxy);
 
             if (RetDate.Length > 32)
             {
@@ -3859,9 +3883,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public VerifyUserResponese VerifyUser(string wxId, VerifyUserOpCode opCode, string Content, string antispamTicket, string value, byte sceneList = 0x0f)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3909,7 +3933,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_VERIFYUSER, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_VERIFYUSER);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_VERIFYUSER, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -3945,9 +3969,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public VerifyUserResponese VerifyUserList(string wxId, VerifyUserOpCode opCode, string Content, VerifyUser[] verifyUsers, byte sceneList = 0x0f)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -3990,7 +4014,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_VERIFYUSER, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_VERIFYUSER);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_VERIFYUSER, customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -4021,9 +4045,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public mm.command.NewInitResponse NewInit(CustomerInfoCache customerInfoCache)
         {
-            //string key = ConstCacheKey.GetWxIdKey(wxId);
+            //
             //var cache = RedisCache.CreateInstance();
-            //var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            //var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             //if (customerInfoCache == null)
             //{
             //    throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -4044,7 +4068,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(niqData, 139, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/newinit");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/newinit", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -4085,9 +4109,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public byte[] GetMsgBigImg(long datatotalength, int MsgId, string wxId, string toWxid, int StartPos, int datalen, uint CompressType = 1)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -4144,7 +4168,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 109, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/getmsgimg");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/getmsgimg", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -4188,9 +4212,9 @@ namespace Wechat.Protocol
         /// <returns></returns>
         public byte[] GetVideo(string wxId, string toWxid, int MsgId, long datatotalength, int StartPos, int datalen, uint CompressType = 1)
         {
-            string key = ConstCacheKey.GetWxIdKey(wxId);
+
             var cache = RedisCache.CreateInstance();
-            var customerInfoCache = cache.Get<CustomerInfoCache>(key);
+            var customerInfoCache = cache.HashGet<CustomerInfoCache>(ConstCacheKey.GetWxIdKey(), wxId);
             if (customerInfoCache == null)
             {
                 throw new ExpiredException("缓存失效，请重新生成二维码登录");
@@ -4199,8 +4223,6 @@ namespace Wechat.Protocol
             //long datatotalength = 1238782;//根据需要选择下载 高清图还是缩略图 长度自然是对应 高清长度和缩略长度
             List<byte> downImgData = new List<byte>();
             var GetMsgImgResponse_ = new micromsg.DownloadVideoResponse();
-
-
 
             micromsg.SKBuiltinString_t ToUserName_ = new micromsg.SKBuiltinString_t();
             ToUserName_.String = toWxid;
@@ -4237,7 +4259,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 150, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/downloadvideo");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/downloadvideo", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);
@@ -4340,7 +4362,7 @@ namespace Wechat.Protocol
 
                 body = head.Concat(body).ToArray();
 
-                byte[] RetDate = Util.HttpPost(body, URL.CGI_MANUALAUTH);
+                byte[] RetDate = Util.HttpPost(body, URL.CGI_MANUALAUTH, customerInfoCache.Proxy);
                 //Console.WriteLine(RetDate.ToString(16, 2));
                 //var ret = HttpPost(@short + MM.URL.CGI_MANUALAUTH, head, null);
                 //var lhead = LongLinkPack(LongLinkCmdId.SEND_MANUALAUTH_CMDID, seq++, head.Length);
@@ -4720,7 +4742,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, (int)CGI_TYPE.CGI_TYPE_NEWSYNC, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_NEWSYNC);
+            byte[] RetDate = Util.HttpPost(SendDate, URL.CGI_NEWSYNC, customerInfoCache.Proxy);
             int mUid = 0;
             string cookie = null;
             if (RetDate.Length > 32)
@@ -4777,7 +4799,7 @@ namespace Wechat.Protocol
             //组包
             byte[] SendDate = pack(src, 162, bufferlen, customerInfoCache.AesKey, customerInfoCache.PriKeyBuf, customerInfoCache.MUid, customerInfoCache.Cookie, 5, true, true);
             //发包
-            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/shakeget");
+            byte[] RetDate = Util.HttpPost(SendDate, "/cgi-bin/micromsg-bin/shakeget", customerInfoCache.Proxy);
             if (RetDate.Length > 32)
             {
                 var packinfo = UnPackHeader(RetDate, out mUid, out cookie);

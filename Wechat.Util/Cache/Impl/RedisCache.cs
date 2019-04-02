@@ -13,7 +13,7 @@ namespace Wechat.Util.Cache
     /// <summary>
     /// redis缓存
     /// </summary>
-    public class RedisCache : ICache
+    public class RedisCache //: ICache
     {
         private int Default_Timeout = 600;//默认超时时间（单位秒）
         private string address;
@@ -80,42 +80,30 @@ namespace Wechat.Util.Cache
 
         public T Get<T>(string key)
         {
-            DateTime begin = DateTime.Now;
             var cacheValue = database.StringGet(key);
-            DateTime endCache = DateTime.Now;
-            var value = default(T);
-            if (!cacheValue.IsNull)
+            if (cacheValue.IsNull)
             {
-                var cacheObject = JsonConvert.DeserializeObject<CacheObject<T>>(cacheValue, jsonConfig);
-                if (!cacheObject.ForceOutofDate)
-                    database.KeyExpire(key, new TimeSpan(0, 0, cacheObject.ExpireTime));
-                value = cacheObject.Value;
+                return default(T);
             }
-            DateTime endJson = DateTime.Now;
-            return value;
+            var cacheObject = JsonConvert.DeserializeObject<CacheObject<T>>(cacheValue, jsonConfig);
+            return cacheObject.Value;
         }
 
         public string HashGet(string key, string field)
         {
-            DateTime begin = DateTime.Now;
             var cacheValue = database.HashGet(key, field);
             return cacheValue;
         }
 
         public T HashGet<T>(string key, string field) where T : class
         {
-            DateTime begin = DateTime.Now;
             var cacheValue = database.HashGet(key, field);
-            var value = default(T);
-            if (!cacheValue.IsNull)
+            if (cacheValue.IsNull)
             {
-                var cacheObject = JsonConvert.DeserializeObject<CacheObject<T>>(cacheValue, jsonConfig);
-                if (!cacheObject.ForceOutofDate)
-                    database.KeyExpire(key, new TimeSpan(0, 0, cacheObject.ExpireTime));
-                value = cacheObject.Value;
+                return null;
             }
-            DateTime endJson = DateTime.Now;
-            return value;
+            var cacheObject = JsonConvert.DeserializeObject<T>(cacheValue, jsonConfig);
+            return cacheObject;
         }
 
         public IList<T> HashGetAll<T>(string key) where T : class
@@ -124,16 +112,9 @@ namespace Wechat.Util.Cache
             var cacheValues = database.HashGetAll(key);
             var list = cacheValues?.Select(o =>
               {
-                  return JsonConvert.DeserializeObject<CacheObject<T>>(o.Value, jsonConfig)?.Value;
+                  return JsonConvert.DeserializeObject<T>(o.Value, jsonConfig);
               })?.ToList();
             return list;
-        }
-
-
-        public void HashSet(string key, string fileid, string fileValue)
-        {
-            database.HashSet(key, new HashEntry[] { new HashEntry(fileid, fileValue) });
-
         }
 
 

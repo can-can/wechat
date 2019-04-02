@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Wechat.Api.Extensions;
+using Wechat.Api.Helper;
 using Wechat.Api.Response.Login;
 using Wechat.Protocol;
 using Wechat.Util.Exceptions;
@@ -81,6 +82,10 @@ namespace Wechat.Api.Controllers
             try
             {
                 var result = _wechat.CheckLoginQRCode(uuid);
+                if (result.State == 2)
+                {
+                    SyncMessageJob.LogoutWxIds.Remove(result.WxId);
+                }
                 CheckLoginResponse checkLoginResponse = new CheckLoginResponse();
                 checkLoginResponse.State = result.State;
                 checkLoginResponse.Uuid = result.Uuid;

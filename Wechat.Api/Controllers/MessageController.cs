@@ -13,6 +13,7 @@ using Wechat.Api.Request.Message;
 using Wechat.Protocol;
 using Wechat.Util.Exceptions;
 using Wechat.Util.Extensions;
+using Wechat.Util.FileStore;
 
 namespace Wechat.Api.Controllers
 {

@@ -34,14 +34,59 @@
     <Reference Include="ClassLibrary1">
       <HintPath>..\lib\ClassLibrary1.dll</HintPath>
     </Reference>
+    <Reference Include="fastjson-1.2.12">
+      <HintPath>..\lib\fastjson-1.2.12.dll</HintPath>
+    </Reference>
     <Reference Include="Google.ProtocolBuffers">
       <HintPath>..\lib\Google.ProtocolBuffers.dll</HintPath>
+    </Reference>
+    <Reference Include="IKVM.OpenJDK.Charsets">
+      <HintPath>..\lib\IKVM.OpenJDK.Charsets.dll</HintPath>
+    </Reference>
+    <Reference Include="IKVM.OpenJDK.Core">
+      <HintPath>..\lib\IKVM.OpenJDK.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="IKVM.OpenJDK.Jdbc">
+      <HintPath>..\lib\IKVM.OpenJDK.Jdbc.dll</HintPath>
+    </Reference>
+    <Reference Include="IKVM.OpenJDK.Management">
+      <HintPath>..\lib\IKVM.OpenJDK.Management.dll</HintPath>
+    </Reference>
+    <Reference Include="IKVM.OpenJDK.Security">
+      <HintPath>..\lib\IKVM.OpenJDK.Security.dll</HintPath>
+    </Reference>
+    <Reference Include="IKVM.OpenJDK.SwingAWT">
+      <HintPath>..\lib\IKVM.OpenJDK.SwingAWT.dll</HintPath>
+    </Reference>
+    <Reference Include="IKVM.OpenJDK.Text">
+      <HintPath>..\lib\IKVM.OpenJDK.Text.dll</HintPath>
+    </Reference>
+    <Reference Include="IKVM.OpenJDK.Util">
+      <HintPath>..\lib\IKVM.OpenJDK.Util.dll</HintPath>
+    </Reference>
+    <Reference Include="IKVM.Runtime">
+      <HintPath>..\lib\IKVM.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="MMPro">
       <HintPath>..\lib\MMPro.dll</HintPath>
     </Reference>
+    <Reference Include="netty-all-4.0.36.Final">
+      <HintPath>..\lib\netty-all-4.0.36.Final.dll</HintPath>
+    </Reference>
     <Reference Include="OpenSSLNativeClass">
       <HintPath>..\lib\OpenSSLNativeClass.dll</HintPath>
+    </Reference>
+    <Reference Include="rocketmq-client-4.2.0-incubating">
+      <HintPath>..\lib\rocketmq-client-4.2.0-incubating.dll</HintPath>
+    </Reference>
+    <Reference Include="rocketmq-common-4.2.0-incubating">
+      <HintPath>..\lib\rocketmq-common-4.2.0-incubating.dll</HintPath>
+    </Reference>
+    <Reference Include="rocketmq-remoting-4.2.0-incubating">
+      <HintPath>..\lib\rocketmq-remoting-4.2.0-incubating.dll</HintPath>
+    </Reference>
+    <Reference Include="slf4j-api-1.7.5">
+      <HintPath>..\lib\slf4j-api-1.7.5.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

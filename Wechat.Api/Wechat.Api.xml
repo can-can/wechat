@@ -488,59 +488,15 @@
             
             </summary>
         </member>
-        <member name="T:Wechat.Api.Helper.FileStorageHelper">
+        <member name="T:Wechat.Api.Helper.SyncMessageJob">
             <summary>
-            文件存储
+            同步消息作业
             </summary>
         </member>
-        <member name="M:Wechat.Api.Helper.FileStorageHelper.GetObjectName(System.String)">
+        <member name="T:Wechat.Api.Helper.SyncMessageJob.SyncMessageResult">
             <summary>
-            获取objectName
+            推送消息
             </summary>
-            <param name="MchId"></param>
-            <returns></returns>
-        </member>
-        <member name="M:Wechat.Api.Helper.FileStorageHelper.CreateOssClient">
-            <summary>
-            创建对象
-            </summary>
-            <returns></returns>
-        </member>
-        <member name="M:Wechat.Api.Helper.FileStorageHelper.DownloadToBuffer(System.String)">
-            <summary>
-            下载
-            </summary>
-            <param name="objectName"></param>
-            <returns></returns>
-        </member>
-        <member name="M:Wechat.Api.Helper.FileStorageHelper.DownloadToStream(System.String)">
-            <summary>
-            下载
-            </summary>
-            <param name="objectName"></param>
-            <returns></returns>
-        </member>
-        <member name="M:Wechat.Api.Helper.FileStorageHelper.DownloadToBufferAsync(System.String)">
-            <summary>
-            异步下载
-            </summary> 
-            <param name="objectName"></param>
-            <returns></returns>
-        </member>
-        <member name="M:Wechat.Api.Helper.FileStorageHelper.Upload(System.String,System.IO.Stream,System.String)">
-            <summary>
-            上传
-            </summary>
-            <param name="fileName"></param>
-            <param name="sm"></param>
-            <param name="objectName"></param>
-        </member>
-        <member name="M:Wechat.Api.Helper.FileStorageHelper.Upload(System.Byte[],System.String)">
-            <summary>
-            上传
-            </summary>    
-            <param name="buffer"></param>
-            <param name="objectName"></param>
         </member>
         <member name="T:Wechat.Api.Request.Common.BigVideo">
             <summary>

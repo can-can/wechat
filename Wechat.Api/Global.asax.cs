@@ -9,6 +9,7 @@ using System.Web.Routing;
 using Wechat.Api.Filters;
 using Wechat.Api.Helper;
 using Wechat.Util;
+using Wechat.Util.TaskServer;
 
 namespace Wechat.Api
 {
@@ -34,8 +35,12 @@ namespace Wechat.Api
             //GlobalConfiguration.Configuration.Filters.Add(new AuthenticationAttribute());
 
             //上传文件服务
-            QueueHelper<UploadFileObj>.Register(UploadFileAction.UploadFile);
-            QueueHelper<UploadFileObj>.Start();
+            //QueueHelper<UploadFileObj>.Register(UploadFileAction.UploadFile);
+            //QueueHelper<UploadFileObj>.Start();
+
+            QuartzHelper.CreateScheduler().GetAwaiter().GetResult();
+            QuartzHelper.RegisterJob<SyncMessageJob>("/5 * * ? * *", "wechat").GetAwaiter().GetResult();
+
         }
     }
 }

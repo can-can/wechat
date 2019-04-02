@@ -2,6 +2,15 @@
   "version": 3,
   "targets": {
     ".NETFramework,Version=v4.6.1": {
+      "Aliyun.OSS.SDK/2.9.0": {
+        "type": "package",
+        "compile": {
+          "lib/Aliyun.OSS.dll": {}
+        },
+        "runtime": {
+          "lib/Aliyun.OSS.dll": {}
+        }
+      },
       "log4net/2.0.8": {
         "type": "package",
         "compile": {
@@ -63,6 +72,20 @@
         },
         "runtime": {
           "lib/net40/protobuf-net.dll": {}
+        }
+      },
+      "Quartz/3.0.7": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "System.Configuration",
+          "System.Runtime.Remoting"
+        ],
+        "compile": {
+          "lib/net452/Quartz.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Quartz.dll": {}
         }
       },
       "StackExchange.Redis/2.0.519": {
@@ -176,6 +199,21 @@
           "lib/netstandard2.0/System.Threading.Tasks.Extensions.dll": {}
         }
       },
+      "Topshelf/4.2.0": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "System",
+          "System.Configuration.Install",
+          "System.Core",
+          "System.ServiceProcess"
+        ],
+        "compile": {
+          "lib/net452/Topshelf.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Topshelf.dll": {}
+        }
+      },
       "ZXing.Net/0.16.4": {
         "type": "package",
         "compile": {
@@ -215,11 +253,29 @@
           "bin/placeholder/Wechat.Protocol.dll": {}
         }
       },
+      "Wechat.Task.App/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.6.1",
+        "dependencies": {
+          "Topshelf": "4.2.0",
+          "Wechat.Protocol": "1.0.0",
+          "Wechat.Util": "1.0.0",
+          "log4net": "2.0.8"
+        },
+        "compile": {
+          "bin/placeholder/Wechat.Task.App.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Wechat.Task.App.dll": {}
+        }
+      },
       "Wechat.Util/1.0.0": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6.1",
         "dependencies": {
+          "Aliyun.OSS.SDK": "2.9.0",
           "Newtonsoft.Json": "12.0.1",
+          "Quartz": "3.0.7",
           "StackExchange.Redis": "2.0.519",
           "ZXing.Net": "0.16.4",
           "log4net": "2.0.8"
@@ -233,6 +289,15 @@
       }
     },
     ".NETFramework,Version=v4.6.1/win": {
+      "Aliyun.OSS.SDK/2.9.0": {
+        "type": "package",
+        "compile": {
+          "lib/Aliyun.OSS.dll": {}
+        },
+        "runtime": {
+          "lib/Aliyun.OSS.dll": {}
+        }
+      },
       "log4net/2.0.8": {
         "type": "package",
         "compile": {
@@ -294,6 +359,20 @@
         },
         "runtime": {
           "lib/net40/protobuf-net.dll": {}
+        }
+      },
+      "Quartz/3.0.7": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "System.Configuration",
+          "System.Runtime.Remoting"
+        ],
+        "compile": {
+          "lib/net452/Quartz.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Quartz.dll": {}
         }
       },
       "StackExchange.Redis/2.0.519": {
@@ -407,6 +486,21 @@
           "lib/netstandard2.0/System.Threading.Tasks.Extensions.dll": {}
         }
       },
+      "Topshelf/4.2.0": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "System",
+          "System.Configuration.Install",
+          "System.Core",
+          "System.ServiceProcess"
+        ],
+        "compile": {
+          "lib/net452/Topshelf.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Topshelf.dll": {}
+        }
+      },
       "ZXing.Net/0.16.4": {
         "type": "package",
         "compile": {
@@ -446,11 +540,29 @@
           "bin/placeholder/Wechat.Protocol.dll": {}
         }
       },
+      "Wechat.Task.App/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.6.1",
+        "dependencies": {
+          "Topshelf": "4.2.0",
+          "Wechat.Protocol": "1.0.0",
+          "Wechat.Util": "1.0.0",
+          "log4net": "2.0.8"
+        },
+        "compile": {
+          "bin/placeholder/Wechat.Task.App.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Wechat.Task.App.dll": {}
+        }
+      },
       "Wechat.Util/1.0.0": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6.1",
         "dependencies": {
+          "Aliyun.OSS.SDK": "2.9.0",
           "Newtonsoft.Json": "12.0.1",
+          "Quartz": "3.0.7",
           "StackExchange.Redis": "2.0.519",
           "ZXing.Net": "0.16.4",
           "log4net": "2.0.8"
@@ -464,6 +576,15 @@
       }
     },
     ".NETFramework,Version=v4.6.1/win-x64": {
+      "Aliyun.OSS.SDK/2.9.0": {
+        "type": "package",
+        "compile": {
+          "lib/Aliyun.OSS.dll": {}
+        },
+        "runtime": {
+          "lib/Aliyun.OSS.dll": {}
+        }
+      },
       "log4net/2.0.8": {
         "type": "package",
         "compile": {
@@ -525,6 +646,20 @@
         },
         "runtime": {
           "lib/net40/protobuf-net.dll": {}
+        }
+      },
+      "Quartz/3.0.7": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "System.Configuration",
+          "System.Runtime.Remoting"
+        ],
+        "compile": {
+          "lib/net452/Quartz.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Quartz.dll": {}
         }
       },
       "StackExchange.Redis/2.0.519": {
@@ -638,6 +773,21 @@
           "lib/netstandard2.0/System.Threading.Tasks.Extensions.dll": {}
         }
       },
+      "Topshelf/4.2.0": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "System",
+          "System.Configuration.Install",
+          "System.Core",
+          "System.ServiceProcess"
+        ],
+        "compile": {
+          "lib/net452/Topshelf.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Topshelf.dll": {}
+        }
+      },
       "ZXing.Net/0.16.4": {
         "type": "package",
         "compile": {
@@ -677,11 +827,29 @@
           "bin/placeholder/Wechat.Protocol.dll": {}
         }
       },
+      "Wechat.Task.App/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.6.1",
+        "dependencies": {
+          "Topshelf": "4.2.0",
+          "Wechat.Protocol": "1.0.0",
+          "Wechat.Util": "1.0.0",
+          "log4net": "2.0.8"
+        },
+        "compile": {
+          "bin/placeholder/Wechat.Task.App.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Wechat.Task.App.dll": {}
+        }
+      },
       "Wechat.Util/1.0.0": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6.1",
         "dependencies": {
+          "Aliyun.OSS.SDK": "2.9.0",
           "Newtonsoft.Json": "12.0.1",
+          "Quartz": "3.0.7",
           "StackExchange.Redis": "2.0.519",
           "ZXing.Net": "0.16.4",
           "log4net": "2.0.8"
@@ -695,6 +863,15 @@
       }
     },
     ".NETFramework,Version=v4.6.1/win-x86": {
+      "Aliyun.OSS.SDK/2.9.0": {
+        "type": "package",
+        "compile": {
+          "lib/Aliyun.OSS.dll": {}
+        },
+        "runtime": {
+          "lib/Aliyun.OSS.dll": {}
+        }
+      },
       "log4net/2.0.8": {
         "type": "package",
         "compile": {
@@ -756,6 +933,20 @@
         },
         "runtime": {
           "lib/net40/protobuf-net.dll": {}
+        }
+      },
+      "Quartz/3.0.7": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "System.Configuration",
+          "System.Runtime.Remoting"
+        ],
+        "compile": {
+          "lib/net452/Quartz.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Quartz.dll": {}
         }
       },
       "StackExchange.Redis/2.0.519": {
@@ -869,6 +1060,21 @@
           "lib/netstandard2.0/System.Threading.Tasks.Extensions.dll": {}
         }
       },
+      "Topshelf/4.2.0": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "System",
+          "System.Configuration.Install",
+          "System.Core",
+          "System.ServiceProcess"
+        ],
+        "compile": {
+          "lib/net452/Topshelf.dll": {}
+        },
+        "runtime": {
+          "lib/net452/Topshelf.dll": {}
+        }
+      },
       "ZXing.Net/0.16.4": {
         "type": "package",
         "compile": {
@@ -908,11 +1114,29 @@
           "bin/placeholder/Wechat.Protocol.dll": {}
         }
       },
+      "Wechat.Task.App/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.6.1",
+        "dependencies": {
+          "Topshelf": "4.2.0",
+          "Wechat.Protocol": "1.0.0",
+          "Wechat.Util": "1.0.0",
+          "log4net": "2.0.8"
+        },
+        "compile": {
+          "bin/placeholder/Wechat.Task.App.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Wechat.Task.App.dll": {}
+        }
+      },
       "Wechat.Util/1.0.0": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6.1",
         "dependencies": {
+          "Aliyun.OSS.SDK": "2.9.0",
           "Newtonsoft.Json": "12.0.1",
+          "Quartz": "3.0.7",
           "StackExchange.Redis": "2.0.519",
           "ZXing.Net": "0.16.4",
           "log4net": "2.0.8"
@@ -927,6 +1151,19 @@
     }
   },
   "libraries": {
+    "Aliyun.OSS.SDK/2.9.0": {
+      "sha512": "5PW7Eo6DPeh5U7YzTyho4gwi72Y/oNf+OJ2RoD2blCN2akhziGYzgx5Z0X5AID3V19s1Hodm2arAi5MaHxkejA==",
+      "type": "package",
+      "path": "aliyun.oss.sdk/2.9.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "aliyun.oss.sdk.2.9.0.nupkg.sha512",
+        "aliyun.oss.sdk.nuspec",
+        "lib/Aliyun.OSS.dll",
+        "lib/Aliyun.OSS.pdb"
+      ]
+    },
     "log4net/2.0.8": {
       "sha512": "N41MQGHZImiCfn0cUuSBjZxrcNfIQCuCgQP0rpgB3J/NWponEh3lc1LxJEuIsPAR9Oc1jVvfkNNFCY1C5hf9LA==",
       "type": "package",
@@ -1199,6 +1436,23 @@
         "protobuf-net.nuspec"
       ]
     },
+    "Quartz/3.0.7": {
+      "sha512": "3vCJ/eJQzEne1ZocNftmPBjuA0vFHs8rOG3bQcSsB9fbQuZpmkrmOH+0Iq7mlibSbR9f1VV4TUMnkkbPUd7Kqw==",
+      "type": "package",
+      "path": "quartz/3.0.7",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net452/Quartz.dll",
+        "lib/net452/Quartz.pdb",
+        "lib/net452/Quartz.xml",
+        "lib/netstandard2.0/Quartz.dll",
+        "lib/netstandard2.0/Quartz.pdb",
+        "lib/netstandard2.0/Quartz.xml",
+        "quartz.3.0.7.nupkg.sha512",
+        "quartz.nuspec"
+      ]
+    },
     "StackExchange.Redis/2.0.519": {
       "sha512": "ugpaC1zkgN3v6JZ6tMqSgRfElx9qe1nbnziftk91qefMhEo0sEUcfJsIuBLlioE28JSOsu8FOqXMtLD1e8rrZw==",
       "type": "package",
@@ -1452,6 +1706,21 @@
         "version.txt"
       ]
     },
+    "Topshelf/4.2.0": {
+      "sha512": "GQo4KjpunmvXqyFRo8AYsPajkv9GyQn+MEk7UG33tc2rTDxeOm8rUteVw1TEr6kR9HFBO0TI8QGgTVy1vlYJEg==",
+      "type": "package",
+      "path": "topshelf/4.2.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net452/Topshelf.dll",
+        "lib/net452/Topshelf.xml",
+        "lib/netstandard2.0/Topshelf.dll",
+        "lib/netstandard2.0/Topshelf.xml",
+        "topshelf.4.2.0.nupkg.sha512",
+        "topshelf.nuspec"
+      ]
+    },
     "ZXing.Net/0.16.4": {
       "sha512": "qf5XDrWsxXvINh1kPUwVx8uPsvjGLRqw23a21C8scpgIsXnduKS1phBMf959Y5TrtFfFwvjRaZoZ4VRV51VdFg==",
       "type": "package",
@@ -1557,6 +1826,11 @@
       "path": "../Wechat.Protocol/Wechat.Protocol.csproj",
       "msbuildProject": "../Wechat.Protocol/Wechat.Protocol.csproj"
     },
+    "Wechat.Task.App/1.0.0": {
+      "type": "project",
+      "path": "../Wechat.Task.App/Wechat.Task.App.csproj",
+      "msbuildProject": "../Wechat.Task.App/Wechat.Task.App.csproj"
+    },
     "Wechat.Util/1.0.0": {
       "type": "project",
       "path": "../Wechat.Util/Wechat.Util.csproj",
@@ -1570,6 +1844,7 @@
       "Newtonsoft.Json >= 12.0.1",
       "Wechat.Api >= 1.0.0",
       "Wechat.Protocol >= 1.0.0",
+      "Wechat.Task.App >= 1.0.0",
       "Wechat.Util >= 1.0.0",
       "log4net >= 2.0.8"
     ]
@@ -1611,6 +1886,9 @@
             },
             "C:\\Users\\LTL\\Desktop\\Wechat\\Wechat.Protocol\\Wechat.Protocol.csproj": {
               "projectPath": "C:\\Users\\LTL\\Desktop\\Wechat\\Wechat.Protocol\\Wechat.Protocol.csproj"
+            },
+            "C:\\Users\\LTL\\Desktop\\Wechat\\Wechat.Task.App\\Wechat.Task.App.csproj": {
+              "projectPath": "C:\\Users\\LTL\\Desktop\\Wechat\\Wechat.Task.App\\Wechat.Task.App.csproj"
             },
             "C:\\Users\\LTL\\Desktop\\Wechat\\Wechat.Util\\Wechat.Util.csproj": {
               "projectPath": "C:\\Users\\LTL\\Desktop\\Wechat\\Wechat.Util\\Wechat.Util.csproj"

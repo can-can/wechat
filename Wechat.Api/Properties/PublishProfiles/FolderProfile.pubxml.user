@@ -90,11 +90,41 @@
     <File Include="bin/ClassLibrary1.pdb">
       <publishTime>07/15/2018 19:31:53</publishTime>
     </File>
+    <File Include="bin/fastjson-1.2.12.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
     <File Include="bin/Google.ProtocolBuffers.dll">
       <publishTime>05/07/2013 16:35:26</publishTime>
     </File>
     <File Include="bin/ICSharpCode.SharpZipLib.dll">
       <publishTime>05/25/2010 12:55:22</publishTime>
+    </File>
+    <File Include="bin/IKVM.OpenJDK.Charsets.dll">
+      <publishTime>04/01/2019 16:30:25</publishTime>
+    </File>
+    <File Include="bin/IKVM.OpenJDK.Core.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
+    <File Include="bin/IKVM.OpenJDK.Jdbc.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
+    <File Include="bin/IKVM.OpenJDK.Management.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
+    <File Include="bin/IKVM.OpenJDK.Security.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
+    <File Include="bin/IKVM.OpenJDK.SwingAWT.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
+    <File Include="bin/IKVM.OpenJDK.Text.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
+    <File Include="bin/IKVM.OpenJDK.Util.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
+    <File Include="bin/IKVM.Runtime.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
     </File>
     <File Include="bin/log4net.config">
       <publishTime>03/29/2019 15:10:55</publishTime>
@@ -117,6 +147,9 @@
     <File Include="bin/netstandard.dll">
       <publishTime>01/04/2019 10:19:00</publishTime>
     </File>
+    <File Include="bin/netty-all-4.0.36.Final.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
     <File Include="bin/Newtonsoft.Json.dll">
       <publishTime>11/27/2018 18:07:34</publishTime>
     </File>
@@ -131,6 +164,24 @@
     </File>
     <File Include="bin/protobuf-net.xml">
       <publishTime>03/13/2019 13:43:31</publishTime>
+    </File>
+    <File Include="bin/proxyIp.json">
+      <publishTime>04/02/2019 10:55:23</publishTime>
+    </File>
+    <File Include="bin/Quartz.dll">
+      <publishTime>10/07/2018 12:27:38</publishTime>
+    </File>
+    <File Include="bin/Quartz.pdb">
+      <publishTime>10/07/2018 12:27:38</publishTime>
+    </File>
+    <File Include="bin/rocketmq-client-4.2.0-incubating.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
+    <File Include="bin/rocketmq-common-4.2.0-incubating.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
+    <File Include="bin/rocketmq-remoting-4.2.0-incubating.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
     </File>
     <File Include="bin/roslyn/csc.exe">
       <publishTime>05/24/2018 13:38:22</publishTime>
@@ -270,6 +321,9 @@
     <File Include="bin/roslyn/VBCSCompiler.exe.config">
       <publishTime>05/24/2018 13:38:24</publishTime>
     </File>
+    <File Include="bin/slf4j-api-1.7.5.dll">
+      <publishTime>04/01/2019 16:30:26</publishTime>
+    </File>
     <File Include="bin/StackExchange.Redis.dll">
       <publishTime>11/26/2018 13:55:32</publishTime>
     </File>
@@ -349,25 +403,25 @@
       <publishTime>01/23/2014 13:57:34</publishTime>
     </File>
     <File Include="bin/Wechat.Api.dll">
-      <publishTime>03/30/2019 17:10:33</publishTime>
+      <publishTime>04/02/2019 16:57:23</publishTime>
     </File>
     <File Include="bin/Wechat.Api.pdb">
-      <publishTime>03/30/2019 17:10:33</publishTime>
+      <publishTime>04/02/2019 16:57:23</publishTime>
     </File>
     <File Include="bin/Wechat.Api.xml">
-      <publishTime>03/30/2019 17:09:34</publishTime>
+      <publishTime>04/02/2019 16:50:46</publishTime>
     </File>
     <File Include="bin/Wechat.Protocol.dll">
-      <publishTime>03/30/2019 17:10:31</publishTime>
+      <publishTime>04/02/2019 15:50:57</publishTime>
     </File>
     <File Include="bin/Wechat.Protocol.pdb">
-      <publishTime>03/30/2019 17:10:31</publishTime>
+      <publishTime>04/02/2019 15:50:57</publishTime>
     </File>
     <File Include="bin/Wechat.Util.dll">
-      <publishTime>03/30/2019 15:10:20</publishTime>
+      <publishTime>04/02/2019 15:50:53</publishTime>
     </File>
     <File Include="bin/Wechat.Util.pdb">
-      <publishTime>03/30/2019 15:10:20</publishTime>
+      <publishTime>04/02/2019 15:50:53</publishTime>
     </File>
     <File Include="bin/zh-Hans/System.Net.Http.Formatting.resources.dll">
       <publishTime>06/27/2014 02:04:16</publishTime>
@@ -420,11 +474,14 @@
     <File Include="protobuf-net.xml">
       <publishTime>03/13/2019 13:43:31</publishTime>
     </File>
+    <File Include="proxyIp.json">
+      <publishTime>04/02/2019 10:55:23</publishTime>
+    </File>
     <File Include="Web.config">
-      <publishTime>03/30/2019 11:01:19</publishTime>
+      <publishTime>04/02/2019 15:54:33</publishTime>
     </File>
     <File Include="Wechat.Api.xml">
-      <publishTime>03/30/2019 17:09:34</publishTime>
+      <publishTime>04/02/2019 16:50:46</publishTime>
     </File>
   </ItemGroup>
 </Project>

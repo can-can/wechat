@@ -30,6 +30,19 @@ namespace Wechat.Util.Cache
             return $"customer:service:wxid:Wechat_WxId_{wxId}";
         }
 
+
+        /// <summary>
+        /// 获取微信Id
+        /// </summary>
+        /// <param name="wxId"></param>
+        /// <returns></returns>
+        public static string GetWxIdKey()
+        {
+            return $"customer:service:wxid";
+        }
+
+
+
         /// <summary>
         /// 获取队列Id
         /// </summary>
@@ -49,6 +62,16 @@ namespace Wechat.Util.Cache
         public static string GetQueueMsgKey(string wxId, int msgId)
         {
             return $"wxId_{msgId}";
+        }
+
+        /// <summary>
+        /// 获取商户号
+        /// </summary>
+        /// <param name="wxId"></param>
+        /// <returns></returns>
+        public static string GetMchIdKey()
+        {
+            return $"customer:service";
         }
 
         /// <summary>
